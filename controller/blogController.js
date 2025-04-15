@@ -1,7 +1,6 @@
 const Post = require('../model/blog');
-const User = require('../model/user'); // If needed for any additional reference
+const User = require('../model/user');
 
-// Create post
 exports.createPost = async (req, res) => {
     try {
         const userId = req.user.userId;
@@ -16,14 +15,12 @@ exports.createPost = async (req, res) => {
         });
 
         await post.save();
-
         res.status(201).json({ message: 'Post created successfully', postId: post._id });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
 };
 
-// Get all posts
 exports.getAllPosts = async (req, res) => {
     try {
         let query = req.body.query || {};
@@ -41,8 +38,8 @@ exports.getAllPosts = async (req, res) => {
         }
 
         const posts = await Post.find(query)
-            .populate('author', 'name email')  // Optional: populate author's name and email
-            .populate('comments.author', 'name')  // Populate comment author name
+            .populate('author', 'name email')
+            .populate('comments.author', 'name')
             .sort({ createdAt: -1 });
 
         res.status(200).json(posts);
@@ -51,13 +48,12 @@ exports.getAllPosts = async (req, res) => {
     }
 };
 
-// Get post by ID
 exports.getPostById = async (req, res) => {
     try {
         const postId = req.params.postId;
         const post = await Post.findById(postId)
             .populate('author', 'name email')
-            .populate('comments.author', 'name'); // Populate comment author's name
+            .populate('comments.author', 'name');
 
         if (!post) {
             return res.status(404).json({ message: 'Post not found' });
@@ -69,11 +65,9 @@ exports.getPostById = async (req, res) => {
     }
 };
 
-// Edit post
 exports.editPost = async (req, res) => {
     try {
         const postId = req.params.postId;
-
         const updatedPost = await Post.findByIdAndUpdate(postId, req.body, { new: true });
 
         if (!updatedPost) {
@@ -86,7 +80,6 @@ exports.editPost = async (req, res) => {
     }
 };
 
-// Delete post
 exports.deletePost = async (req, res) => {
     try {
         const postId = req.params.postId;
@@ -103,14 +96,12 @@ exports.deletePost = async (req, res) => {
         }
 
         await Post.findByIdAndDelete(postId);
-
         res.status(200).json({ message: 'Post deleted successfully' });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
 };
 
-// Get all posts by a user
 exports.getUserAllPosts = async (req, res) => {
     try {
         const userId = req.params.userId;
@@ -122,7 +113,6 @@ exports.getUserAllPosts = async (req, res) => {
     }
 };
 
-// Like post
 exports.likePost = async (req, res) => {
     try {
         const userId = req.user.userId;
@@ -130,11 +120,10 @@ exports.likePost = async (req, res) => {
 
         if (!post) return res.status(404).json({ message: 'Post not found' });
 
-        // Remove dislike if exists
         post.dislikes = post.dislikes.filter(id => id.toString() !== userId);
 
         if (post.likes.includes(userId)) {
-            post.likes = post.likes.filter(id => id.toString() !== userId); // Unlike
+            post.likes = post.likes.filter(id => id.toString() !== userId);
         } else {
             post.likes.push(userId);
         }
@@ -146,7 +135,6 @@ exports.likePost = async (req, res) => {
     }
 };
 
-// Dislike post
 exports.dislikePost = async (req, res) => {
     try {
         const userId = req.user.userId;
@@ -154,11 +142,10 @@ exports.dislikePost = async (req, res) => {
 
         if (!post) return res.status(404).json({ message: 'Post not found' });
 
-        // Remove like if exists
         post.likes = post.likes.filter(id => id.toString() !== userId);
 
         if (post.dislikes.includes(userId)) {
-            post.dislikes = post.dislikes.filter(id => id.toString() !== userId); // Remove dislike
+            post.dislikes = post.dislikes.filter(id => id.toString() !== userId);
         } else {
             post.dislikes.push(userId);
         }
@@ -170,7 +157,6 @@ exports.dislikePost = async (req, res) => {
     }
 };
 
-// Add comment
 exports.addComment = async (req, res) => {
     try {
         const userId = req.user.userId;
@@ -183,7 +169,6 @@ exports.addComment = async (req, res) => {
 
         await post.save();
 
-        // Optionally populate the comments with author details
         const populatedPost = await Post.findById(post._id)
             .populate('comments.author', 'name');
 
