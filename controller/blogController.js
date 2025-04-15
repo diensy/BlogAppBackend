@@ -1,6 +1,7 @@
-
 const Post = require('../model/blog');
+const User = require('../model/user'); // If needed for any additional reference
 
+// Create post
 exports.createPost = async (req, res) => {
     try {
         const userId = req.user.userId;
@@ -21,6 +22,8 @@ exports.createPost = async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 };
+
+// Get all posts
 exports.getAllPosts = async (req, res) => {
     try {
         let query = req.body.query || {};
@@ -37,7 +40,10 @@ exports.getAllPosts = async (req, res) => {
             query.$or = [{ title: queryRegex }, { catagory: queryRegex }];
         }
 
-        const posts = await Post.find(query).populate('author').sort({ createdAt: -1 });
+        const posts = await Post.find(query)
+            .populate('author', 'name email')  // Optional: populate author's name and email
+            .populate('comments.author', 'name')  // Populate comment author name
+            .sort({ createdAt: -1 });
 
         res.status(200).json(posts);
     } catch (error) {
@@ -45,12 +51,13 @@ exports.getAllPosts = async (req, res) => {
     }
 };
 
-
-
+// Get post by ID
 exports.getPostById = async (req, res) => {
     try {
         const postId = req.params.postId;
-        const post = await Post.findById(postId);
+        const post = await Post.findById(postId)
+            .populate('author', 'name email')
+            .populate('comments.author', 'name'); // Populate comment author's name
 
         if (!post) {
             return res.status(404).json({ message: 'Post not found' });
@@ -62,6 +69,7 @@ exports.getPostById = async (req, res) => {
     }
 };
 
+// Edit post
 exports.editPost = async (req, res) => {
     try {
         const postId = req.params.postId;
@@ -78,6 +86,7 @@ exports.editPost = async (req, res) => {
     }
 };
 
+// Delete post
 exports.deletePost = async (req, res) => {
     try {
         const postId = req.params.postId;
@@ -101,6 +110,7 @@ exports.deletePost = async (req, res) => {
     }
 };
 
+// Get all posts by a user
 exports.getUserAllPosts = async (req, res) => {
     try {
         const userId = req.params.userId;
@@ -111,69 +121,74 @@ exports.getUserAllPosts = async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 };
+
 // Like post
 exports.likePost = async (req, res) => {
     try {
-      const userId = req.user.userId;
-      const post = await Post.findById(req.params.postId);
-  
-      if (!post) return res.status(404).json({ message: 'Post not found' });
-  
-      // Remove dislike if exists
-      post.dislikes = post.dislikes.filter(id => id.toString() !== userId);
-  
-      if (post.likes.includes(userId)) {
-        post.likes = post.likes.filter(id => id.toString() !== userId); // Unlike
-      } else {
-        post.likes.push(userId);
-      }
-  
-      await post.save();
-      res.json({ message: 'Post liked/unliked' });
-    } catch (err) {
-      res.status(500).json({ message: err.message });
-    }
-  };
-  
-  // Dislike post
-  exports.dislikePost = async (req, res) => {
-    try {
-      const userId = req.user.userId;
-      const post = await Post.findById(req.params.postId);
-  
-      if (!post) return res.status(404).json({ message: 'Post not found' });
-  
-      // Remove like if exists
-      post.likes = post.likes.filter(id => id.toString() !== userId);
-  
-      if (post.dislikes.includes(userId)) {
-        post.dislikes = post.dislikes.filter(id => id.toString() !== userId); // Remove dislike
-      } else {
-        post.dislikes.push(userId);
-      }
-  
-      await post.save();
-      res.json({ message: 'Post disliked/undisliked' });
-    } catch (err) {
-      res.status(500).json({ message: err.message });
-    }
-  };
-  
-  // Add comment
-  exports.addComment = async (req, res) => {
-    try {
-      const userId = req.user.userId;
-      const { content } = req.body;
-  
-      const post = await Post.findById(req.params.postId);
-      if (!post) return res.status(404).json({ message: 'Post not found' });
-  
-      post.comments.push({ author: userId, content });
+        const userId = req.user.userId;
+        const post = await Post.findById(req.params.postId);
 
-      await post.save();
-  
-      res.json({ message: 'Comment added' });
+        if (!post) return res.status(404).json({ message: 'Post not found' });
+
+        // Remove dislike if exists
+        post.dislikes = post.dislikes.filter(id => id.toString() !== userId);
+
+        if (post.likes.includes(userId)) {
+            post.likes = post.likes.filter(id => id.toString() !== userId); // Unlike
+        } else {
+            post.likes.push(userId);
+        }
+
+        await post.save();
+        res.json({ message: 'Post liked/unliked' });
     } catch (err) {
-      res.status(500).json({ message: err.message });
+        res.status(500).json({ message: err.message });
     }
-  };
+};
+
+// Dislike post
+exports.dislikePost = async (req, res) => {
+    try {
+        const userId = req.user.userId;
+        const post = await Post.findById(req.params.postId);
+
+        if (!post) return res.status(404).json({ message: 'Post not found' });
+
+        // Remove like if exists
+        post.likes = post.likes.filter(id => id.toString() !== userId);
+
+        if (post.dislikes.includes(userId)) {
+            post.dislikes = post.dislikes.filter(id => id.toString() !== userId); // Remove dislike
+        } else {
+            post.dislikes.push(userId);
+        }
+
+        await post.save();
+        res.json({ message: 'Post disliked/undisliked' });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+};
+
+// Add comment
+exports.addComment = async (req, res) => {
+    try {
+        const userId = req.user.userId;
+        const { content } = req.body;
+
+        const post = await Post.findById(req.params.postId);
+        if (!post) return res.status(404).json({ message: 'Post not found' });
+
+        post.comments.push({ author: userId, content });
+
+        await post.save();
+
+        // Optionally populate the comments with author details
+        const populatedPost = await Post.findById(post._id)
+            .populate('comments.author', 'name');
+
+        res.json({ message: 'Comment added', comments: populatedPost.comments });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+};
